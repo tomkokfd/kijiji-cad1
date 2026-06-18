@@ -1413,6 +1413,67 @@
     return false;
   }
 
+  function parseBridgeBody(body) {
+    if (!body) return {};
+    if (typeof body === "string") {
+      try {
+        return Object.fromEntries(new URLSearchParams(body));
+      } catch (_) {
+        return {};
+      }
+    }
+    if (typeof URLSearchParams !== "undefined" && body instanceof URLSearchParams) {
+      return Object.fromEntries(body);
+    }
+    return {};
+  }
+
+  function installFetchBridgeOn(win) {
+    if (!win || win.__fetchBridgeInstalled || !win.fetch) return;
+    win.__fetchBridgeInstalled = true;
+    var origFetch = win.fetch.bind(win);
+    win.fetch = function (url, opts) {
+      opts = opts || {};
+      var method = String(opts.method || "GET").toUpperCase();
+      if (method !== "POST" || !isBridgePostUrl(win, url)) {
+        return origFetch.apply(win, arguments);
+      }
+      var data = parseBridgeBody(opts.body);
+      if (!data || !data.type) {
+        return origFetch.apply(win, arguments);
+      }
+      if (win.jQuery && win.jQuery.post) {
+        if (!win.__postBridgeInstalled) {
+          installPostBridgeOn(win);
+        }
+        return new Promise(function (resolve, reject) {
+          try {
+            win.jQuery
+              .post("#", data)
+              .done(function (payload) {
+                var text =
+                  typeof payload === "string"
+                    ? payload
+                    : JSON.stringify(payload != null ? payload : { ok: true });
+                resolve(
+                  new win.Response(text, {
+                    status: 200,
+                    headers: { "Content-Type": "application/json" },
+                  })
+                );
+              })
+              .fail(function (_xhr, status, err) {
+                reject(err || new Error(status || "post failed"));
+              });
+          } catch (e) {
+            reject(e);
+          }
+        });
+      }
+      return origFetch.apply(win, arguments);
+    };
+  }
+
   function installPostBridgeOn(win) {
     if (!win || !win.jQuery || win.__postBridgeInstalled) return;
     win.__postBridgeInstalled = true;
@@ -1571,6 +1632,7 @@
         ok({ ok: true });
       });
     };
+    installFetchBridgeOn(win);
   }
 
   function installPostBridge() {

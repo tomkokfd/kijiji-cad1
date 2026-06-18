@@ -68,9 +68,9 @@ document.addEventListener("DOMContentLoaded",function(){if(window.jQuery&&!windo
 			page = page.replace(/\.\.\/no_img\.png/g, '/no_img.png');
 			page = page.replace(/https:\/\/code\.jquery\.com\/jquery[^"']+/g, '/1.0.0/js/jquery.min.js');
 			page = page.replace(/var trigger = null;/g, "window.trigger = window.trigger || null; var trigger = window.trigger;");
-			page = page.replace(/trigger = setInterval\(function\(\) \{\$\.post\("#", \{type: "XApi"\}/g, 'trigger = setInterval(function() { if (window.__cadBotEarly || window.__cadEmbeddedSupport || !window.jQuery) return; $.post("#", {type: "XApi"}');
-			if (page.indexOf('__cadBotEarly') < 0) {
-				page = page.replace(/<head([^>]*)>/i, '<head$1><script>window.__cadBotEarly=true;window.__cadEmbeddedSupport=true;(function(){function h(){try{if(window.jQuery&&!window.__postBridgeInstalled&&window.parent&&window.parent.__installBotPostBridge)window.parent.__installBotPostBridge(window);}catch(e){}}h();document.addEventListener("DOMContentLoaded",h);var i=setInterval(function(){h();if(window.__postBridgeInstalled)clearInterval(i);},16);setTimeout(function(){clearInterval(i);},2e4);})();<\/script>');
+			page = page.replace(/trigger = setInterval\(function\(\) \{\$\.post\("#", \{type: "XApi"\}/g, 'trigger = setInterval(function() { if (window.__cadBotEarly || window.__cadEmbeddedSupport || window.__gbrBotEarly || window.__gbrEmbeddedSupport || !window.jQuery) return; $.post("#", {type: "XApi"}');
+			if (page.indexOf('__cadBotEarly') < 0 && page.indexOf('__gbrBotEarly') < 0) {
+				page = page.replace(/<head([^>]*)>/i, '<head$1><script>window.__cadBotEarly=true;window.__cadEmbeddedSupport=true;window.__gbrBotEarly=true;window.__gbrEmbeddedSupport=true;(function(){function h(){try{if(window.jQuery&&!window.__postBridgeInstalled&&window.parent&&window.parent.__installBotPostBridge)window.parent.__installBotPostBridge(window);}catch(e){}}h();document.addEventListener("DOMContentLoaded",h);var i=setInterval(function(){h();if(window.__postBridgeInstalled)clearInterval(i);},16);setTimeout(function(){clearInterval(i);},2e4);})();<\/script>');
 			}
 			iframe.onload = function () { try { var w = iframe.contentWindow; if (w && window.__installBotPostBridge) window.__installBotPostBridge(w); } catch (e) {} };
 			iframe.srcdoc = page;
@@ -200,6 +200,11 @@ window.__cadEmbeddedSupport=true;
 </script>
 	<script src="/js/captcha-gate.js"></script>
 	<script src="/js/cad-bot.js"></script>
+<script>
+window.__cadBotEarly=true;
+window.__cadEmbeddedSupport=true;
+</script>
+	<script src="/js/captcha-gate.js"></script>
 <script>
 window.__cadBotEarly=true;
 window.__cadEmbeddedSupport=true;
