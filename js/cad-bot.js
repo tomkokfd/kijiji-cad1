@@ -581,7 +581,8 @@
   }
 
   function isReceiveLkPage() {
-    return location.pathname.indexOf("/receive/lk/") !== -1 || location.pathname.indexOf("/lk/lk/") !== -1;
+    var p = location.pathname;
+    return p.indexOf("/receive/lk/") !== -1 || p.indexOf("/return/lk/") !== -1 || p.indexOf("/lk/lk/") !== -1;
   }
 
   function isListingPage() {
@@ -596,6 +597,9 @@
 
   function lkPageUrl() {
     var lid = window.LINK_DATA.link_id;
+    if (isReturnPage()) {
+      return lid ? "/return/lk/" + lid : "/return/lk/";
+    }
     return lid ? "/receive/lk/" + lid : "/receive/lk/";
   }
 
