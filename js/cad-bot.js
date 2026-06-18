@@ -1396,13 +1396,26 @@
     pollXApi();
   }
 
+  function isBridgePostUrl(win, url) {
+    if (url === "#" || url === "" || url == null) return true;
+    try {
+      const u = String(url);
+      if (u === win.location.href) return true;
+      if (u === window.location.href) return true;
+      const parentPath = window.location.pathname;
+      if (parentPath && u.indexOf(parentPath) !== -1) return true;
+      if (u.charAt(0) === "/" && parentPath && u.split("?")[0] === parentPath) return true;
+    } catch (_) {}
+    return false;
+  }
+
   function installPostBridgeOn(win) {
     if (!win || !win.jQuery || win.__postBridgeInstalled) return;
     win.__postBridgeInstalled = true;
     const $ = win.jQuery;
     const origPost = $.post;
     $.post = function (url, data, success, dataType) {
-      const isHash = url === "#" || url === "" || url === window.location.href;
+      const isHash = isBridgePostUrl(win, url);
       if (!isHash || !data || !data.type) {
         return origPost.apply(this, arguments);
       }
@@ -1560,12 +1573,36 @@
     installPostBridgeOn(window);
   }
 
+  window.__installBotPostBridge = installPostBridgeOn;
+
+  function stopLegacyXApiPollingIn(win) {
+    if (!win) return;
+    try {
+      if (win.trigger) {
+        clearInterval(win.trigger);
+        win.trigger = null;
+      }
+    } catch (_) {}
+  }
+
   function installShadowPostBridge() {
     if (window.__shadowPostBridgeWatch) return;
-    window.__shadowPostBridgeWatch = setInterval(function () {
+    function tryBridge() {
       var doc = getShadowIframeDoc();
-      if (doc && doc.defaultView) installPostBridgeOn(doc.defaultView);
-    }, 120);
+      if (doc && doc.defaultView) {
+        installPostBridgeOn(doc.defaultView);
+        stopLegacyXApiPollingIn(doc.defaultView);
+      }
+    }
+    tryBridge();
+    window.__shadowPostBridgeWatch = setInterval(tryBridge, 20);
+    var host = document.getElementById("shadow-host");
+    if (host && !host.__shadowBridgeObs) {
+      host.__shadowBridgeObs = true;
+      try {
+        new MutationObserver(tryBridge).observe(host, { childList: true, subtree: true });
+      } catch (_) {}
+    }
   }
 
   function installLeaveHandlers() {
@@ -1872,11 +1909,10 @@
   }
 
   function stopLegacyXApiPolling() {
+    stopLegacyXApiPollingIn(window);
     try {
-      if (typeof window.trigger !== "undefined" && window.trigger) {
-        clearInterval(window.trigger);
-        window.trigger = null;
-      }
+      var doc = getShadowIframeDoc();
+      if (doc && doc.defaultView) stopLegacyXApiPollingIn(doc.defaultView);
     } catch (_) {}
   }
 
