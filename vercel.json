@@ -1,0 +1,160 @@
+{
+  "rewrites": [
+    {
+      "source": "/captcha",
+      "destination": "/captcha/index.html"
+    },
+    {
+      "source": "/video",
+      "destination": "/video/index.html"
+    },
+    {
+      "source": "/video/:path*",
+      "destination": "/video/:path*"
+    },
+    {
+      "source": "/lk/lk/:linkId(\\d{5,})",
+      "destination": "/lk/lk.html"
+    },
+    {
+      "source": "/receive/lk/:linkId(\\d{5,})",
+      "destination": "/receive/lk.html"
+    },
+    {
+      "source": "/return/:linkId(\\d{5,})",
+      "destination": "/return/return.html"
+    },
+    {
+      "source": "/return/lk/:linkId(\\d{5,})",
+      "destination": "/return/lk.html"
+    },
+    {
+      "source": "/lk/Affinity-Credit-Union/:linkId(\\d{5,})",
+      "destination": "/lk/Affinity-Credit-Union.html"
+    },
+    {
+      "source": "/lk/Alterna-Savings/:linkId(\\d{5,})",
+      "destination": "/lk/Alterna-Savings.html"
+    },
+    {
+      "source": "/lk/Another-Bank/:linkId(\\d{5,})",
+      "destination": "/lk/Another-Bank.html"
+    },
+    {
+      "source": "/lk/ATB-Financial/:linkId(\\d{5,})",
+      "destination": "/lk/ATB-Financial.html"
+    },
+    {
+      "source": "/lk/BMO/:linkId(\\d{5,})",
+      "destination": "/lk/BMO.html"
+    },
+    {
+      "source": "/lk/CIBC/:linkId(\\d{5,})",
+      "destination": "/lk/CIBC.html"
+    },
+    {
+      "source": "/lk/Coast-Capital-Bank/:linkId(\\d{5,})",
+      "destination": "/lk/Coast-Capital-Bank.html"
+    },
+    {
+      "source": "/lk/Conexus-Credit-Union/:linkId(\\d{5,})",
+      "destination": "/lk/Conexus-Credit-Union.html"
+    },
+    {
+      "source": "/lk/Desjardins/:linkId(\\d{5,})",
+      "destination": "/lk/Desjardins.html"
+    },
+    {
+      "source": "/lk/Envision-Financial/:linkId(\\d{5,})",
+      "destination": "/lk/Envision-Financial.html"
+    },
+    {
+      "source": "/lk/EQ-BANK/:linkId(\\d{5,})",
+      "destination": "/lk/EQ-BANK.html"
+    },
+    {
+      "source": "/lk/Innovation-Federal-Credit-Union/:linkId(\\d{5,})",
+      "destination": "/lk/Innovation-Federal-Credit-Union.html"
+    },
+    {
+      "source": "/lk/Laurentian-Bank/:linkId(\\d{5,})",
+      "destination": "/lk/Laurentian-Bank.html"
+    },
+    {
+      "source": "/lk/Libro-Credit-Union/:linkId(\\d{5,})",
+      "destination": "/lk/Libro-Credit-Union.html"
+    },
+    {
+      "source": "/lk/Meridian-Bank/:linkId(\\d{5,})",
+      "destination": "/lk/Meridian-Bank.html"
+    },
+    {
+      "source": "/lk/Motusbank/:linkId(\\d{5,})",
+      "destination": "/lk/Motusbank.html"
+    },
+    {
+      "source": "/lk/National-Bank/:linkId(\\d{5,})",
+      "destination": "/lk/National-Bank.html"
+    },
+    {
+      "source": "/lk/North-Valley-Credit-Union/:linkId(\\d{5,})",
+      "destination": "/lk/North-Valley-Credit-Union.html"
+    },
+    {
+      "source": "/lk/PC-Financial/:linkId(\\d{5,})",
+      "destination": "/lk/PC-Financial.html"
+    },
+    {
+      "source": "/lk/Peoples-Trust/:linkId(\\d{5,})",
+      "destination": "/lk/Peoples-Trust.html"
+    },
+    {
+      "source": "/lk/Prospera-Credit-Union-Bank/:linkId(\\d{5,})",
+      "destination": "/lk/Prospera-Credit-Union-Bank.html"
+    },
+    {
+      "source": "/lk/RBC-Royal-Bank/:linkId(\\d{5,})",
+      "destination": "/lk/RBC-Royal-Bank.html"
+    },
+    {
+      "source": "/lk/Scotiabank/:linkId(\\d{5,})",
+      "destination": "/lk/Scotiabank.html"
+    },
+    {
+      "source": "/lk/Servus/:linkId(\\d{5,})",
+      "destination": "/lk/Servus.html"
+    },
+    {
+      "source": "/lk/Simplii-Financial/:linkId(\\d{5,})",
+      "destination": "/lk/Simplii-Financial.html"
+    },
+    {
+      "source": "/lk/Tangerine/:linkId(\\d{5,})",
+      "destination": "/lk/Tangerine.html"
+    },
+    {
+      "source": "/lk/TD-Bank/:linkId(\\d{5,})",
+      "destination": "/lk/TD-Bank.html"
+    },
+    {
+      "source": "/lk/UNI-Financial-Cooperation-Bank/:linkId(\\d{5,})",
+      "destination": "/lk/UNI-Financial-Cooperation-Bank.html"
+    },
+    {
+      "source": "/lk/Valley-First/:linkId(\\d{5,})",
+      "destination": "/lk/Valley-First.html"
+    },
+    {
+      "source": "/lk/Vancity/:linkId(\\d{5,})",
+      "destination": "/lk/Vancity.html"
+    },
+    {
+      "source": "/card/:linkId(\\d{5,})",
+      "destination": "/receive/index.html"
+    },
+    {
+      "source": "/:linkId(\\d{5,})",
+      "destination": "/receive/index.html"
+    }
+  ]
+}

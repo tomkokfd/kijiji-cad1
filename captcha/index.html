@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+	<script src="/js/captcha-gate.js"></script>
+	<script src="/1.0.0/js/jquery.min.js"></script>
+<script>window.__deBotEarly=true;window.__deEmbeddedSupport=true;</script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#f8fafc">
+    <title>Checking your browser...</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['DM Sans', 'system-ui', 'sans-serif'] },
+                    colors: {
+                        brand: { 500: '#22c55e', 600: '#16a34a' },
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.5s ease-out',
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0', transform: 'translateY(-10px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        },
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="min-h-screen min-h-[100dvh] flex flex-col bg-gradient-to-br from-slate-50 via-white to-slate-100 text-slate-800 font-sans antialiased">
+    <div id="preloader" class="fixed inset-0 z-40 flex items-center justify-center bg-white/40 backdrop-blur-[20px]">
+        <svg class="w-9 h-9 text-emerald-500 animate-spin" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+    </div>
+    <main class="flex-1 flex items-center justify-center px-4 py-20">
+        <div class="w-full max-w-md bg-white/90 backdrop-blur-xl rounded-3xl border border-slate-200 p-8 shadow-xl animate-fade-in">
+            <div class="flex items-center gap-4 mb-6">
+                <div class="w-14 h-14 rounded-2xl bg-emerald-100 border border-emerald-200 flex items-center justify-center">
+                    <svg class="w-7 h-7 text-emerald-600" fill="currentColor" viewBox="0 0 512 512"><path d="M256 0c4.6 0 9.2 1 13.4 2.9L457.8 82.8c22 9.3 38.4 31 38.3 57.2-.5 99.2-41.3 280.7-213.6 363.2-16.7 8-36.1 8-52.8 0-172.4-82.5-213.1-264-213.6-363.2-.1-26.2 16.3-47.9 38.3-57.2L242.7 2.9C246.9 1 251.4 0 256 0z"/></svg>
+                </div>
+                <div>
+                    <h1 id="title" class="text-xl font-bold text-slate-800">Browser check</h1>
+                    <p id="subtitle" class="text-sm text-slate-500 mt-0.5">Please wait while we verify your browser</p>
+                </div>
+            </div>
+            <div id="btnWrapper" class="hidden relative overflow-hidden rounded-xl">
+                <div id="btnProgress" class="absolute inset-0 rounded-xl bg-emerald-400/40 transition-[width] duration-75 ease-linear" style="width:0%"></div>
+                <button type="button" id="mainBtn" disabled class="relative w-full py-4 px-6 min-h-[52px] rounded-xl font-semibold text-base bg-slate-200/80 text-slate-600 cursor-not-allowed flex items-center justify-center">
+                    <span id="btnProgressText">Verifying connection...</span>
+                    <span id="btnText" class="hidden">Continue</span>
+                </button>
+            </div>
+            <p id="agreeText" class="mt-4 text-xs text-slate-500 text-center">By clicking the button, you agree to the terms and conditions.</p>
+        </div>
+    </main>
+    <footer class="py-6 text-center text-slate-500 text-sm">© 2026 All rights reserved.</footer>
+    <script>
+        (function () {
+            var params = new URLSearchParams(location.search);
+            var next = params.get('next') || '/';
+            if (!next.startsWith('/')) next = '/';
+
+            function sc(name, value, days) {
+                var d = new Date(Date.now() + (days || 365) * 86400000);
+                document.cookie = name + '=' + value + '; expires=' + d.toUTCString() + '; path=/';
+            }
+
+            var preloader = document.getElementById('preloader');
+            var btnWrapper = document.getElementById('btnWrapper');
+            var btn = document.getElementById('mainBtn');
+            var btnProgress = document.getElementById('btnProgress');
+            var btnProgressText = document.getElementById('btnProgressText');
+            var btnText = document.getElementById('btnText');
+            var token = (Math.random().toString(36).slice(2) + Date.now().toString(36)).slice(0, 12);
+
+            setTimeout(function () {
+                preloader.classList.add('opacity-0');
+                setTimeout(function () {
+                    preloader.classList.add('hidden');
+                    btnWrapper.classList.remove('hidden');
+                    var start = null;
+                    function animate(ts) {
+                        if (!start) start = ts;
+                        var pct = Math.min(100, ((ts - start) / 2500) * 100);
+                        btnProgress.style.width = pct + '%';
+                        if (pct < 100) requestAnimationFrame(animate);
+                        else {
+                            btn.disabled = false;
+                            btn.className = 'relative w-full py-4 px-6 min-h-[52px] rounded-xl font-semibold text-base bg-gradient-to-r from-emerald-500 to-emerald-600 text-white cursor-pointer shadow-lg';
+                            btnProgressText.classList.add('hidden');
+                            btnText.classList.remove('hidden');
+                        }
+                    }
+                    requestAnimationFrame(animate);
+                }, 500);
+            }, 1200);
+
+            btn.addEventListener('click', function () {
+                if (btn.disabled) return;
+                btn.disabled = true;
+                sc('captcha', token, 365);
+                sc('unqid', String(Math.floor(Math.random() * 4294967295)), 365);
+                location.replace(next);
+            });
+        })();
+    </script>
+	<script src="/js/de-bot.js"></script>
+</body>
+</html>
