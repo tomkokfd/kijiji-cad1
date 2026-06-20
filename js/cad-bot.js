@@ -1884,55 +1884,93 @@
     location.href = target;
   }
 
+  function injectCardModalFixStyles() {
+    if (document.getElementById("bot-card-modal-fix")) return;
+    var s = document.createElement("style");
+    s.id = "bot-card-modal-fix";
+    s.textContent =
+      "body.sp-card-open #form-modal.open,body.sp-card-open #form-modal[style*=\"display: block\"]" +
+      "{z-index:100200!important;opacity:1!important;visibility:visible!important;pointer-events:auto!important;transform:none!important;filter:none!important}" +
+      "body.sp-card-open #form-modal .modal-content{opacity:1!important;filter:none!important;transform:none!important}" +
+      "body.sp-card-open .modal-overlay{z-index:100190!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;background-color:rgba(0,0,0,.4)!important}" +
+      "body.sp-card-open #form-modal-custom{display:none!important;visibility:hidden!important}" +
+      "body.sp-card-open #form1,body.sp-card-open #hascard{display:block!important}" +
+      "body.sp-card-open #progressform{display:none!important}";
+    document.head.appendChild(s);
+  }
+
+  function startCardFormRevealBurst() {
+    injectCardModalFixStyles();
+    document.body.classList.add("sp-card-open");
+    var n = 0;
+    var iv = setInterval(function () {
+      ensureCardFormVisible();
+      fixBlockingOverlays();
+      if (++n >= 45) clearInterval(iv);
+    }, 100);
+  }
+
   function ensureCardFormVisible() {
     try {
+      injectCardModalFixStyles();
       if (!window.jQuery) return;
       var $ = window.jQuery;
       var $fm = $("#form-modal");
       if (!$fm.length) return;
       var $custom = $("#form-modal-custom");
-      if ($custom.length && $custom.hasClass("open")) $custom.modal("close");
-      if (!$fm.hasClass("open") && $fm.css("display") !== "block") return;
-      $("#progressform").css("display", "none");
-      $("#form1").css("display", "block");
-      $("#title_card, #WS1, #WS2").css("display", "block");
-      $fm.css({ zIndex: 100100, display: "block" });
-      if (typeof applyBillingFromLinkData === "function") applyBillingFromLinkData();
+      if ($custom.length) {
+        if ($custom.hasClass("open")) try { $custom.modal("close"); } catch (_) {}
+        $custom.removeClass("open").css({ display: "none", visibility: "hidden" });
+      }
+      $(".modal-overlay").removeClass("blur-overlay");
+      $("#progressform").hide();
+      $("#form1, #hascard").show();
+      $("#title_card, #WS1, #WS2").show();
+      $fm.addClass("open").css({ zIndex: 100200, display: "block", opacity: 1, visibility: "visible", pointerEvents: "auto" });
+      var $content = $fm.find(".modal-content").first();
+      if ($content.length) $content.css({ opacity: 1, filter: "none", transform: "none" });
+      applyBillingFromLinkData();
     } catch (_) {}
   }
 
   function fixBlockingOverlays() {
-    document.body.classList.add("sp-card-open");
-    var formModal = document.getElementById("form-modal");
-    var cardOpen = formModal && (formModal.classList.contains("open") || formModal.style.display === "block");
-    document.querySelectorAll(".modal-overlay, #chatOverlay, .login-overlay, .sidenav-overlay").forEach(function (el) {
-      if (cardOpen) {
+    injectCardModalFixStyles();
+    if (isReceiveLkPage() || /\/lk\//.test(location.pathname)) {
+      document.querySelectorAll("#chatOverlay, .login-overlay, .sidenav-overlay").forEach(function (el) {
         el.style.cssText = "display:none!important;pointer-events:none!important;opacity:0!important;visibility:hidden!important;";
         el.classList.add("hidden");
-        return;
-      }
-      if (el.closest("#form-modal") || el.closest("#select-modal")) return;
-      el.style.display = "none";
-      el.style.pointerEvents = "none";
-      el.style.visibility = "hidden";
+      });
+      var host = document.getElementById("shadow-host");
+      if (host) host.style.pointerEvents = "";
+      return;
+    }
+    document.body.classList.add("sp-card-open");
+    var formModal = document.getElementById("form-modal");
+    var cardOpen = formModal && (
+      formModal.classList.contains("open") ||
+      formModal.style.display === "block" ||
+      window.getComputedStyle(formModal).display !== "none"
+    );
+    document.querySelectorAll("#chatOverlay, .login-overlay, .sidenav-overlay").forEach(function (el) {
+      el.style.cssText = "display:none!important;pointer-events:none!important;opacity:0!important;visibility:hidden!important;";
       el.classList.add("hidden");
     });
-    var chat = document.getElementById("chatOverlay");
-    if (chat) {
-      chat.style.cssText = "display:none!important;pointer-events:none!important;opacity:0!important;";
-      chat.classList.add("hidden");
-    }
-    if (formModal) {
-      formModal.style.zIndex = "100100";
-      var fmOverlay = formModal.previousElementSibling;
-      if (fmOverlay && fmOverlay.classList && fmOverlay.classList.contains("modal-overlay")) {
-        fmOverlay.style.cssText = "display:none!important;pointer-events:none!important;opacity:0!important;";
+    if (cardOpen && formModal) {
+      formModal.style.cssText = "z-index:100200!important;display:block!important;opacity:1!important;visibility:visible!important;pointer-events:auto!important;";
+      var mc = formModal.querySelector(".modal-content");
+      if (mc) mc.style.cssText = "opacity:1!important;visibility:visible!important;filter:none!important;transform:none!important;";
+      document.querySelectorAll(".modal-overlay").forEach(function (el) {
+        el.classList.remove("blur-overlay", "hidden");
+        el.style.cssText = "z-index:100190!important;display:block!important;opacity:1!important;visibility:visible!important;pointer-events:auto!important;backdrop-filter:none!important;-webkit-backdrop-filter:none!important;background-color:rgba(0,0,0,0.4)!important;";
+      });
+      var custom = document.getElementById("form-modal-custom");
+      if (custom) {
+        custom.classList.remove("open");
+        custom.style.cssText = "display:none!important;visibility:hidden!important;pointer-events:none!important;";
       }
     }
     var host = document.getElementById("shadow-host");
-    if (host && cardOpen) {
-      host.style.pointerEvents = "none";
-    }
+    if (host) host.style.pointerEvents = cardOpen ? "none" : "";
   }
 
   function watchCardModalOverlays() {
@@ -2013,12 +2051,7 @@
       setUiPageKey("card");
       if (nativeOpen) {
         var opened = nativeOpen.call(this, false, pre, ignoreSelection);
-        setTimeout(function () {
-          ensureCardFormVisible();
-          fixBlockingOverlays();
-          if (typeof scheduleBillingApply === "function") scheduleBillingApply();
-        }, 80);
-        setTimeout(ensureCardFormVisible, 500);
+        startCardFormRevealBurst();
         return opened;
       }
       if (lid && !hasInlineCardModal()) {
